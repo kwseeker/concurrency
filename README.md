@@ -1,9 +1,14 @@
 # Java 并发多线程从简到全
 
+参考：http://ifeve.com/java-concurrency-thread-directory/
+
 目录：
 
 [TOC]
 
+相关文档：
+
+kwseeker/netty Executors线程池.md
 
 ## 1 基本概念
 
@@ -70,16 +75,118 @@
 
 ##### 3.3.0 Monitor原理
 
+TODO：JVM Monitor的实现
+
 ##### 3.3.1 synchronized
 
 ##### 3.3.2 lock
 
 + ReentrantLock
 
++ 自旋锁
+
 ##### 3.3.3 死锁的产生与解决
 
+##### 3.3.4 AQS CAS
+
+##### 3.3.5 ThreadLocal
+
++ 实现原理
+
+    参考：[ThreadLocal和ThreadLocalMap源码分析](https://www.cnblogs.com/KingJack/p/10599921.html)
+
+    总结：ThreadLocal实现线程本地变量依赖于Thread对象ThreadLocalMap类型的成员变量threadLocals，
+    ThreadLocalMap是一个哈希表（通过Hash计算索引的数组），ThreadLocal变量用于作为key索引这个ThreadLocal在某个线程中对应的值，
+    如果万一发生碰撞(求出的索引处已经有值，key不相同)，则尝试向下一个索引处插入，每次set()后都要清理一下无效的节点并判断是否需要扩容。
+
+    ![ThreadLocal数据结构](https://upload-images.jianshu.io/upload_images/7432604-ad2ff581127ba8cc.jpg?imageMogr2/auto-orient/)
+    比如有个类实例，类实例有两个ThreadLocal成员变量分别是ThreadLocal1和ThreadLocal2，有三个线程引用这个类实例，则它们的内存结构如上。
+
+    ![执行流程](https://img-blog.csdnimg.cn/20190326141858895.jpg?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L20xbl9sb3Zl,size_16,color_FFFFFF,t_70)
+    
+    - set实现
+    
+        在某个线程中对ThreadLocal变量做set(value)操作，会首先获取当前线程对象，然后判断当前线程的 threadLocals (ThreadLocalMap，
+        每个线程都有这个成员变量) 是否为空;
+        不为空，则直接插入这个值value；
+        ```
+        private void set(ThreadLocal<?> key, Object value) {
+        
+            // We don't use a fast path as with get() because it is at
+            // least as common to use set() to create new entries as
+            // it is to replace existing ones, in which case, a fast
+            // path would fail more often than not.
+        
+            Entry[] tab = table;
+            int len = tab.length;
+            int i = key.threadLocalHashCode & (len-1);
+        
+            for (Entry e = tab[i];
+                 e != null;
+                 e = tab[i = nextIndex(i, len)]) {
+                ThreadLocal<?> k = e.get();
+        
+                if (k == key) {
+                    e.value = value;
+                    return;
+                }
+        
+                if (k == null) {
+                    replaceStaleEntry(key, value, i);
+                    return;
+                }
+            }
+        
+            tab[i] = new Entry(key, value);
+            int sz = ++size;
+            if (!cleanSomeSlots(i, sz) && sz >= threshold)
+                rehash();
+        }
+        ```
+        
+        为空，则新建一个 ThreadLocalMap，并设置第一个值为value；
+        ```
+        ThreadLocalMap(ThreadLocal<?> firstKey, Object firstValue) {
+            table = new Entry[INITIAL_CAPACITY];
+            int i = firstKey.threadLocalHashCode & (INITIAL_CAPACITY - 1);
+            table[i] = new Entry(firstKey, firstValue);
+            size = 1;
+            setThreshold(INITIAL_CAPACITY);
+        }
+        ```
+        
+        ThreadLocalMap 内部是一个哈希表（即通过Hash索引的数组，默认容量16，使用当前 ThreadLocal对象的 threadLocalHashCode & (INITIAL_CAPACITY -1) 作为索引 ），
+        每一个成员 Entry 都是一个包含了值的 ThreadLocal 的弱引用。
+        
+    - get实现
+    
+    - remove实现
+    
+    InheritableThreadLocal类是ThreadLocal的子类。InheritableThreadLocal允许一个线程创建的所有子线程访问其父线程的值。
+    
+    Ps：
+    JDK8之前静态变量存储在方法区(方法区是JVM的规范，永久代是方法区的具体实现),JDK8之后就取消了“永久代”，取而代之的是“元空间”，
+    永久代中的数据也进行了迁移，静态成员变量迁移到了堆中。
+
++ 内存泄漏隐患与内存泄漏检测
+
+    [使用ThreadLocal不当可能会导致内存泄露](http://ifeve.com/%E4%BD%BF%E7%94%A8threadlocal%E4%B8%8D%E5%BD%93%E5%8F%AF%E8%83%BD%E4%BC%9A%E5%AF%BC%E8%87%B4%E5%86%85%E5%AD%98%E6%B3%84%E9%9C%B2/)
+
+    Ps：
+    软引用、弱引用、虚引用可以理解为强引用的镜像，强引用失效后，软引用会在内存不足时被自动回收，弱引用会在下一次GC时被回收，
+    虚引用可以在任何时候被回收了。
 
 ## 4 JUC
+
+#### 4.1 Future 及其实现类
+
++ 超时监听
+    
+    - 多线程超时监听与退出 
+    
+        TODO: [java 监听多线程超时：Future](https://blog.csdn.net/yiyiwyf/article/details/80065413)
+
++ 获取线程执行结果
 
 
 ## 5 线程池  
@@ -95,7 +202,11 @@
 
 #### 6.2 CountDownLatch  
 
+TODO: [什么时候使用CountDownLatch](http://www.importnew.com/15731.html)
+
 #### 6.3 CyclicBarrier
+
+TODO: CountDownLatch 和 CyclicBarrier 的区别
 
 #### 6.4 Semaphore
 
