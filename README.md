@@ -178,11 +178,19 @@ TODO：JVM Monitor的实现
 
     为何ThreadLocal容易造成内存泄漏？  
     
-    首先ThreadLocal.set() 设置的值存储在线程的Entry数组threadLocals中，数组成员是Entry类型是一个WeakReference。
-    关键是线程的多个ThreadLocal变量均会保持对这个threadLocals的引用（之前调试时发现线程刚创建时threadLocal里面就已经有了三个值），当某个ThreadLocal使用完毕引用对象被回收，但是还有其他引用对象存在，
-    如果不在这个ThreadLocal引用对象被回收之前调用ThreadLocal.remove()清除这个Entry成员，它将一直存在直到所有的threadLocals的引用对象被释放
-    下一次GC它才会被释放，如果threadLocals的引用对象一直存在则这个Entry成员也一直存在就造成内存泄漏。
-
+    ```
+    static class Entry extends WeakReference<ThreadLocal<?>> {...}
+    ```
+    首先ThreadLocal.set() 设置的值存储在线程的Entry数组threadLocals中，数组成员是Entry类型是ThreadLocal变量的WeakReference。
+    因此如果ThreadLocal没有外部强引用来引用它，那么Entry会在下次JVM垃圾收集时被回收。
+    出现一个null Key的情况，外部读取ThreadLocalMap中的元素是无法通过null Key来找到Value的。
+    因此如果当前线程的生命周期很长，一直存在，那么其内部的ThreadLocalMap对象也一直生存下来，
+    这些null key就存在一条强引用链的关系一直存在：Thread --> ThreadLocalMap-->Entry-->Value，
+    这条强引用链会导致Entry不会回收，Value也不会回收，但Entry中的Key却已经被回收的情况，造成内存泄漏。
+   
+    JVM团队做了一些措施来保证ThreadLocal尽量不会内存泄漏：在ThreadLocal的get()、set()、remove()方法调用的时候
+    会清除掉线程ThreadLocalMap中所有Entry中Key为null的Value，并将整个Entry设置为null，利于下次内存回收。
+    
     可以使用 Executors.newFixedThreadPool() 创建一个持久的线程，在线程中不断地新建ThreadLocal变量,set(),然后变量赋值null；
     慢慢地会发现这个测试进程占用内存会越来越大。
 
