@@ -158,6 +158,10 @@ TODO：JVM Monitor的实现
         ThreadLocalMap 内部是一个哈希表（即通过Hash索引的数组，默认容量16，使用当前 ThreadLocal对象的 threadLocalHashCode & (INITIAL_CAPACITY -1) 作为索引 ），
         每一个成员 Entry 都是一个包含了值的 ThreadLocal 的弱引用。
         
+        ThreadLocalMap.set()位置索引：键的hash值与（len-1）按位与获得数组index，
+        然后判断这个索引处（Entry extends WeakReference<ThreadLocal<?>>）是否为空，为空直接插入；
+        非空则判断key是否相等，不相等直接插入，相等则替换值。
+        
     - get实现
     
     - remove实现
@@ -171,6 +175,16 @@ TODO：JVM Monitor的实现
 + 内存泄漏隐患与内存泄漏检测
 
     [使用ThreadLocal不当可能会导致内存泄露](http://ifeve.com/%E4%BD%BF%E7%94%A8threadlocal%E4%B8%8D%E5%BD%93%E5%8F%AF%E8%83%BD%E4%BC%9A%E5%AF%BC%E8%87%B4%E5%86%85%E5%AD%98%E6%B3%84%E9%9C%B2/)
+
+    为何ThreadLocal容易造成内存泄漏？  
+    
+    首先ThreadLocal.set() 设置的值存储在线程的Entry数组threadLocals中，数组成员是Entry类型是一个WeakReference。
+    关键是线程的多个ThreadLocal变量均会保持对这个threadLocals的引用（之前调试时发现线程刚创建时threadLocal里面就已经有了三个值），当某个ThreadLocal使用完毕引用对象被回收，但是还有其他引用对象存在，
+    如果不在这个ThreadLocal引用对象被回收之前调用ThreadLocal.remove()清除这个Entry成员，它将一直存在直到所有的threadLocals的引用对象被释放
+    下一次GC它才会被释放，如果threadLocals的引用对象一直存在则这个Entry成员也一直存在就造成内存泄漏。
+
+    可以使用 Executors.newFixedThreadPool() 创建一个持久的线程，在线程中不断地新建ThreadLocal变量,set(),然后变量赋值null；
+    慢慢地会发现这个测试进程占用内存会越来越大。
 
     Ps：
     软引用、弱引用、虚引用可以理解为强引用的镜像，强引用失效后，软引用会在内存不足时被自动回收，弱引用会在下一次GC时被回收，
