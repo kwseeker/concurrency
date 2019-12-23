@@ -1,4 +1,5 @@
 /target/
+*/target/
 !.mvn/wrapper/maven-wrapper.jar
 
 ### STS ###
@@ -14,6 +15,7 @@
 .idea
 *.iws
 *.iml
+*/*.iml
 *.ipr
 
 ### NetBeans ###
