@@ -6,7 +6,10 @@
     <groupId>top.kwseeker</groupId>
     <artifactId>concurrency</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <packaging>jar</packaging>
+    <packaging>pom</packaging>
+    <modules>
+        <module>jmm</module>
+    </modules>
 
     <name>concurrency</name>
     <description>Demo project for web concurrency</description>

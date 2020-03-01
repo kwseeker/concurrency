@@ -1,5 +1,8 @@
 /target/
+*/target/
 !.mvn/wrapper/maven-wrapper.jar
+jmm/jcstress-result*
+jmm/results
 
 ### STS ###
 .apt_generated
@@ -14,6 +17,7 @@
 .idea
 *.iws
 *.iml
+*/*.iml
 *.ipr
 
 ### NetBeans ###
