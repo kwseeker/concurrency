@@ -53,6 +53,25 @@ kwseeker/netty Executors线程池.md
     - Thread 
     
     - FutureTask
+    
+        FutureTask 获取线程执行结果的原理：以 ThreadPoolExecutor 为例（实现 ExecutorService 接口）, 其 submit() 方法提交任务， 
+        返回 一个 FutureTask 实例，这个实例 outcome 成员变量用于存储线程的执行结果， state 成员变量用于记录线程的执行状态。
+        由于不知道什么时候线程执行完毕并返回结果，主线程只能主动轮询查看线程执行状态（FutureTask.get()查看前面说的 state）每次轮询判断线程状态，
+        还未执行完则主线程放弃当前时间片竞争下一个时间片，当线程执行完毕后，取 outcome 并返回。
+        不过这个是正常的执行流程（对应 FutureTask 里面的 Normal 状态）。
+        
+        还可能碰到异常状态：抛出异常，线程取消执行或被中断，可以看源码里面是怎么处理异常状态的。
+        ```
+        private static final int NEW          = 0;
+        private static final int COMPLETING   = 1;
+        private static final int NORMAL       = 2;
+        private static final int EXCEPTIONAL  = 3;
+        private static final int CANCELLED    = 4;
+        private static final int INTERRUPTING = 5;
+        private static final int INTERRUPTED  = 6;
+        ``` 
+        
+        TODO：线程池的线程是怎么将执行结果写入到outcome中的？大概浏览了下源码却没找到！日后仔细研究。
 
 #### 2.2 线程中断与继续执行
 
@@ -210,6 +229,117 @@ TODO：JVM Monitor的实现
 
 + 获取线程执行结果
 
+
+#### Java异步与回调
+
++ Java异步实现
+    
+    这里说的异步指任务异步执行+异步处理执行结果；
+    多线程本身是异步的，但是Java8之前异步有个问题：对于有返回值的任务只能同步等待它返回结果。
+    Java8之前会不断轮询任务线程是否执行完。
+    
+    事件驱动（事件循环，请求对象，执行回调）。  
+    真正的异步都是借助回调实现的。异步任务提交的同时传一个回调函数，当任务完成异步任务线程执行回调。
+    
+    - Future（伪异步：需要同步获取结果）   
+   
+        Future 的限制：  
+        无法手动完成；  
+        阻塞式结果返回；
+        无法链式多个Future；
+        无法合并多个Future结果；
+        缺少异常处理。
+        
+    - CountdownLatch（伪异步）
+    
+    - CompletableFuture（Java8新增接口，实现真正的异步）
+        
+        针对Future的限制，Java8引入了CompletableFuture。
+        ```
+        CompletableFuture asyncCompletableFuture3 = CompletableFuture.supplyAsync(() -> {
+                    return String.format("[Thread: %s] Hello world ...", Thread.currentThread().getName());
+                }).thenApply(value -> {
+                    return value + " at " + LocalDate.now();
+                }).thenApply(value -> {
+                    System.out.println(value);
+                    return value;                               //异步返回结果 + 合并Future结果
+                }).thenRun(() -> {
+                    System.out.println("操作结束");
+                }).exceptionally((e)-> {                        //异常处理
+                    e.printStackTrace();
+                    return null;
+                });
+        ```
+        
+    - 第三方框架的实现
+    
+        * Guava
+        
+        * Netty Promise
+
+    - Spring中异步方法
+        
+        @Async
+
++ Java回调实现
+
++ 对Java异步请求执行同步监听
+
+    - Future get()方法阻塞等待异步任务执行结果
+        
+        ```
+        /**
+         * Awaits completion or aborts on interrupt or timeout.
+         *
+         * @param timed true if use timed waits
+         * @param nanos time to wait, if timed
+         * @return state upon completion
+         */
+        private int awaitDone(boolean timed, long nanos)
+            throws InterruptedException {
+            final long deadline = timed ? System.nanoTime() + nanos : 0L;
+            WaitNode q = null;
+            boolean queued = false;
+            for (;;) {
+                if (Thread.interrupted()) {
+                    removeWaiter(q);
+                    throw new InterruptedException();
+                }
+    
+                int s = state;
+                if (s > COMPLETING) {
+                    if (q != null)
+                        q.thread = null;
+                    return s;
+                }
+                else if (s == COMPLETING) // cannot time out yet
+                    Thread.yield();         //放弃当前执行机会，从执行状态变为可执行状态，等待下次执行机会
+                else if (q == null)
+                    q = new WaitNode();
+                else if (!queued)
+                    queued = UNSAFE.compareAndSwapObject(this, waitersOffset,
+                                                         q.next = waiters, q);
+                else if (timed) {
+                    nanos = deadline - System.nanoTime();
+                    if (nanos <= 0L) {
+                        removeWaiter(q);
+                        return state;
+                    }
+                    LockSupport.parkNanos(this, nanos);
+                }
+                else
+                    LockSupport.park(this);
+            }
+        }
+        ```
+
+    - 使用wait和notify方法
+    
+    - 使用条件锁
+    
+    - 使用CountDownLatch
+    
+    - 使用CyclicBarrier
 
 ## 5 线程池  
 
