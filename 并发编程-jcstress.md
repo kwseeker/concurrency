@@ -122,10 +122,10 @@ TODO：抽空研究下使用方法和实现。
 
   + JVM参数
 
-    ```txt
-    -XX:+UnlockDiagnosticVMOptions 
-    -XX:+WhiteBoxAPI 
-    -XX:-RestrictContended
+    查看所有-XX参数
+    
+    ```shell
+    $ java -client -XX:+PrintFlagsFinal
     ```
 
     
