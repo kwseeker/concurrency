@@ -1,3 +1,5 @@
+# 并发编程-jcstress
+
 [TOC]
 
 [jcstress](https://wiki.openjdk.java.net/display/CodeTools/jcstress)
@@ -10,9 +12,9 @@ jcstress（Java Concurrency stress tests）Java并发压力测试是一种实验
 
 TODO：抽空研究下使用方法和实现。
 
-## 1 使用方法
+## 使用方法
 
-#### 1.1. Maven配置
+### Maven配置
 
 ```xml
     <properties>
@@ -105,11 +107,11 @@ TODO：抽空研究下使用方法和实现。
 
 上面pom.xml中将项目打包成可执行jar包，是为了在命令行中启动测试，如果在IDEA启动器启动测试，只需要配置启动器不需要配置maven-shade-plugin。
 
-#### 1.2. 测试用例编写
+### 测试用例编写
 
 
 
-#### 1.3. 启动参数配置
+### 启动参数配置
 
 + 启动参数
 
@@ -142,5 +144,5 @@ TODO：抽空研究下使用方法和实现。
 
   
 
-## 2 实现原理
+## 实现原理
 

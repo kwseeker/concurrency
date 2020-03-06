@@ -9,6 +9,13 @@
     <packaging>pom</packaging>
     <modules>
         <module>jmm</module>
+        <module>thread</module>
+        <module>thread-safety</module>
+        <module>juc-lock</module>
+        <module>cas</module>
+        <module>juc-atomic</module>
+        <module>juc-collection</module>
+        <module>juc-executor</module>
     </modules>
 
     <name>concurrency</name>
@@ -25,9 +32,21 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>1.8</java.version>
+        <jcstress.version>0.5</jcstress.version>
     </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>org.openjdk.jcstress</groupId>
+            <artifactId>jcstress-core</artifactId>
+            <version>${jcstress.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjdk.jcstress</groupId>
+            <artifactId>jcstress-samples</artifactId>
+            <version>${jcstress.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter</artifactId>
