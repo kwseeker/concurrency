@@ -73,7 +73,7 @@ static final int PROPAGATE = -3;
 
 
 
-## AQS源码分析
+## AQS类源码分析
 
 ### ReentrantLock
 
@@ -134,4 +134,23 @@ public class ReentrantLockTest {
 
 别人画了张图很形象：
 ![AQS公平锁和非公平锁区别](./imgs/AQS公平锁和非公平锁区别.png)
+
+### CyclicBarrier
+
+`CyclicBrrier`是同步屏障，用于控制多线程同时开始执行任务。
+
+工作原理：  
+基于`Condition`的等待唤醒机制(刚开始猜想是Object wait() notifyAll(),这种应该也是可以实现的)；  
+１）设置同步屏障参与的线程数量（作为未准备就绪计数 count）；  
+２）前面就绪(count--,表示自己已经就绪)的线程阻塞等待条件(就绪即开始执行任务前调用Condition$await()方法）；  
+３）最后一个准备就绪的线程（count--后等于０）执行条件唤醒`Condition$notifyAll()`,唤醒所有线程；同时还需要注意它还会重置count技术和generation标志也既是说可以还可以进行下一轮的“比赛”。  
+
+同时：  
+实现中还有一些细节，这里分开说（以往分析源码喜欢将主要逻辑和细节问题放在一起说，陈述罗嗦，让人迷惑，而且对于大框架细节总是探索不玩浪费时间，还影响主要逻辑分析的推进）。  
+１）同步计数等值需要使用同步器等措施保证线程安全;  
+２）某线程执行异常需要在后置处理中通知其他就绪的线程退出等待；  
+３）还有线程被中断的处理、超时处理（比较简单不多加陈述）。  
+
+测试代码:  
+`top.kwseeker.concurrency.juclock.CyclicBarrier`。
 
