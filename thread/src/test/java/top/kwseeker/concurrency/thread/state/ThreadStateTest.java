@@ -17,7 +17,8 @@ import java.util.concurrent.locks.LockSupport;
      RUNNABLE,
 
      //阻塞
-     //RUNNABLE->BLOCKED: 进入锁代码块，还未获取锁
+     //RUNNABLE->BLOCKED: 进入锁代码块，还未获取锁,
+     //               　　suspend()基于锁实现也会导致java线程进入阻塞状态。suspend()由于可能导致死锁已经被弃用。
      //BLOCKED->RUNNABLE: 获取锁
      BLOCKED,
 
