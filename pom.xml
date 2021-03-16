@@ -16,6 +16,7 @@
         <module>juc-atomic</module>
         <module>juc-collection</module>
         <module>juc-executor</module>
+        <module>promise-future</module>
     </modules>
 
     <name>concurrency</name>
