@@ -2,6 +2,10 @@
 
 框架源码中这两概念几乎是必现的。
 
+> future和promise起源于[函数式编程](https://zh.wikipedia.org/wiki/函數程式語言)和相关范例（如[逻辑编程](https://zh.wikipedia.org/wiki/邏輯編程) ），目的是将值（future）与其计算方式（promise）分离，从而允许更灵活地进行计算，特别是通过并行化。
+>
+> Future 表示目标计算的返回值，Promise 表示计算的方式，这个模型将返回结果和计算逻辑分离，目的是为了让计算逻辑不影响返回结果，从而抽象出一套异步编程模型。那计算逻辑如何与结果关联呢？它们之间的纽带就是 callback。
+
 + **Future出现是为了不需要同步等待获取异步执行结果，期间可以做其他事**
 
   Future使用参考之前写的FutureTask原理的文档。
@@ -24,7 +28,7 @@
 
     ```java
     future.get();
-    future.get(10, TimeUnit.Second);
+    future.get(10, TimeUnit.SECONDS);
     ```
 
   + **Future 模式-将来式2**
@@ -59,6 +63,50 @@
 
   + **Netty Promise**
 
+    默认实现类：DefaultPromise
+    
+    ```java
+    private static final int MAX_LISTENER_STACK_DEPTH = Math.min(8, SystemPropertyUtil.getInt("io.netty.defaultPromise.maxListenerStackDepth", 8));
+    private static final AtomicReferenceFieldUpdater<DefaultPromise, Object> RESULT_UPDATER = AtomicReferenceFieldUpdater.newUpdater(DefaultPromise.class, Object.class, "result");
+    private static final Object SUCCESS = new Object();
+    private static final Object UNCANCELLABLE = new Object();
+    private static final DefaultPromise.CauseHolder CANCELLATION_CAUSE_HOLDER = new DefaultPromise.CauseHolder(DefaultPromise.StacklessCancellationException.newInstance(DefaultPromise.class, "cancel(...)"));
+    private static final StackTraceElement[] CANCELLATION_STACK;
+    private volatile Object result;
+    // 
+    private final EventExecutor executor;
+    private Object listeners;
+    private short waiters;
+    private boolean notifyingListeners;
+    ```
+    
+    测试案例中DefaultPromise的EventExecutor来自于NioEventLoopGroup实例（12个其中之一）。
+    
+    
+    
+    ```java
+    //NioEventLoopGroup本质是MultithreadEventExecutorGroup, 默认EventExector是ThreadPerTaskExecutor
+    executor = new ThreadPerTaskExecutor(this.newDefaultThreadFactory());
+    //NioEventLoop(默认12个，对应12个线程)是循环处理异步事件的任务(本身是个任务可以循环监听提交的其他任务的状态)，在某个线程上执行。TODO: 在源码上多加点日志调试下
+    //一个任务可以处理多个channel，循环任务的线程在首次提交任务时启动。
+    children = new EventExecutor[nThreads];
+    children[i] = newChild(executor, args);
+    ```
+    
+    提交任务, 任务被放到下一个EventExector线程中。
+    
+    ```java
+    //任务提交之后是提交到了，任务提交后并不确保立即执行，除非有个需要立即执行的任务或者关闭executor
+    loopGroup.schedule(() -> { ... }, 0, TimeUnit.SECONDS);
+    ```
+    
+    DefaultPromise添加监听
+    
+    ```java
+    //添加监听器，然后主动判断一下任务执行完毕了没有，如果结束了就通知所有监听器
+    promise.addListener(future -> System.out.println("result: " + promise.get()));
+    ```
+    
     
 
 + **响应式编程模式**
@@ -76,3 +124,4 @@
 [并发编程 Promise, Future 和 Callback](http://ifeve.com/promise-future-callback/)
 
 [Netty 中的异步编程 Future 和 Promise](https://www.cnblogs.com/rickiyang/p/12742091.html)
+
