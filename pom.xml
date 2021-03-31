@@ -17,6 +17,7 @@
         <module>juc-collection</module>
         <module>juc-executor</module>
         <module>promise-future</module>
+        <module>juc-fork-join</module>
     </modules>
 
     <name>concurrency</name>

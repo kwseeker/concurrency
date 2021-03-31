@@ -61,6 +61,33 @@
 
     这其实就是一种Promise模式的写法。和JS的Promise风格类似。
 
+    **原理分析：**
+
+    **a) 任务提交**
+
+    基本方法：`runAsync`、`supplyAsync`
+
+    ```java
+    // 静态代码中创建了执行任务的线程池
+    private static final boolean useCommonPool = ForkJoinPool.getCommonPoolParallelism() > 1;
+    asyncPool = (Executor)(useCommonPool ? ForkJoinPool.commonPool() : new CompletableFuture.ThreadPerTaskExecutor());
+    //runAsync
+    CompletableFuture<Void> cf1 = CompletableFuture.runAsync(new VoidTask());
+    		asyncRunStage(asyncPool, var0);
+    			// 创建CompletableFuture实例，和FutureTask一样里面它也有一个角色是异步任务结果的容器
+    			CompletableFuture var2 = new CompletableFuture();
+    			//之所以要将CompletableFuture实例传过去是为了让它把结果带出来
+    			// 将任务和结果容器重新包装成了AsyncRun任务 ，然后交给ForkJoinPoll执行（调用execute()方法）
+    			// class AsyncRun extends ForkJoinTask<Void> implements Runnable, CompletableFuture.AsynchronousCompletionTask
+                var0.execute(new CompletableFuture.AsyncRun(var2, var1));
+    				// TODO 任务执行完毕之后，怎么将结果存到CompletableFuture result 成员变量的。
+    				// 这部分需要清晰理解Fork/Join框架原理
+    ```
+
+    **b) 结果返回**
+
+    基本方法：``
+
   + **Netty Promise**
 
     默认实现类：DefaultPromise

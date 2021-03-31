@@ -2,10 +2,8 @@ package top.kwseeker.concurrency.future;
 
 import org.junit.Test;
 
-import java.util.concurrent.Callable;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
+import java.util.function.Supplier;
 
 public class CompletableFutureTest {
 
@@ -232,4 +230,76 @@ public class CompletableFutureTest {
         }).join();
         System.out.println("结束：" + result);
     }
+
+    /**
+     * 源码实现分析
+     * CompletableFuture<T> implements Future<T>, CompletionStage<T>
+     */
+    @Test
+    public void testCompletableFutureTheory() throws InterruptedException, ExecutionException, TimeoutException {
+        CompletableFuture<Void> cf1 = CompletableFuture.runAsync(new VoidTask());
+        System.out.println("waiting...");
+        //cf1.join();     //同步等待不抛异常
+        cf1.get();      //同步等待会抛出异常
+        //cf1.get(1, TimeUnit.SECONDS);     //同步等待，最多等待１s
+        //cf1.getNow(null);                 //查看任务是否完成并返回，没有则使用默认的结果
+        cf1.isCancelled();
+        cf1.isCompletedExceptionally();
+        cf1.isDone();
+        System.out.println("done...");
+
+        //CompletableFuture<Void> cf2 = CompletableFuture.supplyAsync(new VoidTask());
+
+        //cf1.get(1, TimeUnit.SECONDS);
+
+        //CompletableFuture.supplyAsync(() -> {       //提交任务
+        //    try {
+        //        // 异步执行的代码块
+        //        System.out.println("异步代码块，start...");
+        //        Thread.sleep(2000);
+        //        System.out.println("异步代码块，ended");
+        //        return "hello";
+        //    } catch (InterruptedException e) {
+        //        e.printStackTrace();
+        //    }
+        //    return "";
+        //}).thenApply(ret -> {                       //获取上步任务结果继续处理
+        //    try {
+        //        System.out.println("异步代码块执行完毕，执行这个方法处理异步代码块的结果...");
+        //        ret += " world";
+        //        Thread.sleep(1000);
+        //        System.out.println("结果进一步处理同样是在异步执行");
+        //        return ret;
+        //    } catch (Exception e) {
+        //        e.printStackTrace();
+        //    }
+        //    return "";
+        //}).thenRun(() -> {                          //前面任务执行完毕后执行，不关心处理结果
+        //    System.out.println("终于轮到我执行了...");
+        //});
+        //Thread.sleep(5000);
+        //System.out.println("完成");
+    }
+
+
+    static class VoidTask implements Runnable {
+        @Override
+        public void run() {
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    static class CallableTask implements Callable {
+        @Override
+        public Object call() throws Exception {
+            Thread.sleep(2000);
+            return "some ret";
+        }
+    }
+
+    //static class SupplierTask implements Supplier
 }
