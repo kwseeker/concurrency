@@ -1,8 +1,9 @@
-package top.kwseeker.concurrency;
+package top.kwseeker.concurrency.liveness;
 
 import org.junit.Test;
 
 /**
+ * 活跃度问题　之　顺序死锁
  * 顺序死锁解决：按固定的顺序请求锁
  * !!! 下面的实例，第一反应是可以通过账户用户ID大小比较排序,确定请求锁的顺序（引入了业务依赖），但是书上提供了更好的方法 System.identityHashCode() 明显更通用也没有业务逻辑污染。
  * System.identityHashCode(Object) 如果有覆写hashCode()则使用覆写的hashCode()计算hash值，否则使用默认的hashCode(), Object为null的话返回０

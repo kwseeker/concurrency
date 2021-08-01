@@ -17,6 +17,8 @@
         <module>juc-collection</module>
         <module>juc-executor</module>
         <module>promise-future</module>
+        <module>lock</module>
+        <module>01-base</module>
         <module>juc-fork-join</module>
     </modules>
 
