@@ -20,6 +20,7 @@
         <module>lock</module>
         <module>01-base</module>
         <module>juc-fork-join</module>
+        <module>unsafe</module>
     </modules>
 
     <name>concurrency</name>
