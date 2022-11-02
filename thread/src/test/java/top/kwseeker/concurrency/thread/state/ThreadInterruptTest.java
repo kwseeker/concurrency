@@ -14,6 +14,30 @@ public class ThreadInterruptTest {
 
     private static int i = 0;
 
+    @Test
+    public void testInterrupt() throws InterruptedException {
+        String cond = "lock".intern();
+        Thread thread1 = new Thread(() -> {
+            synchronized (cond) {
+                try {
+                    System.out.println("waiting");
+                    cond.wait();
+                } catch (InterruptedException | Error e) {
+                    e.printStackTrace();
+                } finally {
+                    System.out.println("out");
+                }
+            }
+        });
+        thread1.start();
+        Thread.sleep(100);
+        thread1.stop();
+        synchronized (cond) {
+            cond.notify();
+        }
+        thread1.join();
+    }
+
     private void exec(long millis) {
         long begin = System.currentTimeMillis();
         while(System.currentTimeMillis() < begin + millis) {}
@@ -21,7 +45,7 @@ public class ThreadInterruptTest {
 
     @Test
     public void testPrettyExit() throws InterruptedException {
-        //这个线程可能Runable和waitting状态来回切换，所以既要设置标志位检查还要设置捕获InterruptException
+        //这个线程可能 Runnable 和 Waiting 状态来回切换，所以既要设置标志位检查还要设置捕获InterruptException
         Thread thread = new Thread(()->{
             try {
                 while (!Thread.currentThread().isInterrupted()) {
