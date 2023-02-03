@@ -12,7 +12,6 @@
         <module>thread</module>
         <module>thread-safety</module>
         <module>juc-lock</module>
-        <module>cas</module>
         <module>juc-atomic</module>
         <module>juc-collection</module>
         <module>juc-executor</module>
@@ -21,6 +20,7 @@
         <module>01-base</module>
         <module>juc-fork-join</module>
         <module>unsafe</module>
+        <module>threadlocal</module>
     </modules>
 
     <name>concurrency</name>
