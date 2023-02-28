@@ -7,6 +7,8 @@ import org.junit.Test;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicStampedReference;
 
+import static org.junit.Assert.assertEquals;
+
 /**
  * 单纯的CAS并无法实现锁（需要volatile协助）
  */
@@ -38,12 +40,22 @@ public class AtomicStampedReferenceTest {
                 try {
                     latch.await();
 
-                    Holder oldRef = holderRef.getReference();
-                    int stamp = holderRef.getStamp();
-                    boolean ret = holderRef.compareAndSet(oldRef, new Holder(oldRef.num + 1), stamp, stamp + 1);
-                    if (!ret) {
-                        System.out.println("cas failed");
+                    //并发竞争激烈的情况下仍然可以通过自旋保证获得正确结果，不过这种情况就不适合用CAS了还不如直接用锁
+                    for (int j = 0; j < 10; j++) {   //自旋
+
+                        Holder oldRef = holderRef.getReference();
+                        int stamp = holderRef.getStamp();
+                        boolean ret = holderRef.compareAndSet(oldRef, new Holder(oldRef.num + 1), stamp, stamp + 1);
+                        if (ret) {
+                            break;
+                        }
+                        if (j == 9) {
+                            System.out.println("cas failed !!!");
+                        } else {
+                            System.out.println("cas failed, retry");
+                        }
                     }
+
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
@@ -51,6 +63,7 @@ public class AtomicStampedReferenceTest {
             latch.countDown();
         }
         Thread.sleep(100);
+        assertEquals(1000, holderRef.getReference().num.intValue());
         System.out.println(holderRef.getReference().num);
     }
 
