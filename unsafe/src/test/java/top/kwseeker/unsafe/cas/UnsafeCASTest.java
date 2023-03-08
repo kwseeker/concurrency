@@ -1,4 +1,4 @@
-package top.kwseeker.concurrency.cas.lock;
+package top.kwseeker.unsafe.cas.lock;
 
 import org.junit.Assert;
 import org.junit.Test;

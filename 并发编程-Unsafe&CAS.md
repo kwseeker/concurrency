@@ -21,13 +21,24 @@ Unsafe是位于`sun.misc`包下的一个类，主要提供一些用于执行低�
 
 通过`CAS`实现线程安全的操作，可以参考`JDK`源码的原子类实现，Unsafe在`JDK`源码中有非常多的使用(如：原子类、`ForkJoinPool`、...)。
 
-1) 获取Unsafe单例对象（需要反射获取单例对象[绕过调用类的类加载器检查]或者通过`BootstrapClassLoader`加载，否则会报`SecurityException`异常）；
+**1) 获取Unsafe单例对象**（需要反射获取单例对象[绕过调用类的类加载器检查]或者通过`BootstrapClassLoader`加载，否则会报`SecurityException`异常）；
 
-2) 获取要操作的对象的成员变量在对象中的偏移量(内存地址偏移)；
+**2) 获取要操作的对象的成员变量在对象中的偏移量**(JVM内存地址偏移)；
 
-3) 在自旋中调用`compareAndSwapXxx()`（自旋是为了失败重试）。
+```java
+public static long getFieldOffset(Class<?> clazz, String fieldName) {
+    try {
+        Field field = clazz.getDeclaredField(fieldName);
+        return getUnsafe().objectFieldOffset(field);
+    } catch (Exception e) {
+        throw new Error(e);
+    }
+}
+```
 
-参考：`UnsafeCASTest.java`。
+**3) 在自旋中调用`compareAndSwapXxx()`**（自旋是为了失败重试）。
+
+参考：`unsafe` 模块 `UnsafeCASTest.java`，`juc-atomic`模块 `UnsafeOperator`。
 
 ### 原理
 

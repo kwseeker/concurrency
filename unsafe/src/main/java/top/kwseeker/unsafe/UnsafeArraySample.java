@@ -12,7 +12,7 @@ public class UnsafeArraySample extends UnsafeGetInstance {
         Class<?> clazz = String[].class;
         String[] strArray = new String[3];
 
-        //TODO 为何首元素的偏移量总是16，前面16字节做什么的？
+        //为何首元素的偏移量总是16，前面16字节做什么的？ 存储对象头信息
         long baseAddr = unsafe.arrayBaseOffset(clazz);
         int scale = unsafe.arrayIndexScale(clazz);
         System.out.println("baseAddr=" + baseAddr + ", scale=" + scale);

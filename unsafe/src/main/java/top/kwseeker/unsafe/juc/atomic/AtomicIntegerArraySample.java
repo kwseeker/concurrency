@@ -20,7 +20,7 @@ public class AtomicIntegerArraySample {
      */
     public static class MyAtomicIntegerArray extends UnsafeGetInstance {
         private static final Unsafe unsafe = reflectGetUnsafe();
-        //首元素偏移量，为何基本都是16？
+        //首元素偏移量，为何基本都是16？存储对象头信息
         private static final int base;
         //1 << shift 是元素偏移量，为何不直接记录元素偏移量，还要搞个转换？
         private static final int shift;

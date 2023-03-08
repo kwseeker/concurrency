@@ -14,12 +14,14 @@
 + ThreadLocal在源码中的应用
 
   + JDK
-    + SimpleDateFormat
-    + Random
+    + ThreadLocalRandom并发高性能随机数生成器
   + spring-tx
+    + 
 
   + Netty
     + FastThreadLocal (还改进了)
+  + 日志
+    + 链路追踪
   + ...
 
 + 工作中的使用
@@ -27,8 +29,9 @@
   + 拓展传参
 
   + Web会话共享
+  + 使用ThreadLocal解决SimpleDateFormat线程安全问题
 
-  
+
 
 ## ThreadLocal
 
@@ -55,7 +58,7 @@ ThreadLocal instances are typically private static fields in classes that wish t
 
 ![](imgs/threadlocal-theory.png)
 
-Thread对象内部维持了一个**ThreadLocalMap**(是个哈希桶[数组]), key是TLHolder.tc实例的哈希码&桶容量求得的索引（TLHolder.tc相当于一个门面，绑定到线程内部的ThreadLocalMap），value（**ThreadLocalMap.Entry<T>**类型）是线程独享的变量。向ThreadLocal中存取数据时接口方法会**隐式获取当前线程实例**，再获取当前线程实例的ThreadLocalMap，再结合门面的hashcode&桶容量求的索引值进而获取当前线程中与门面绑定的要操作的**独享变量**对应引用，最终进行读写。
+Thread对象内部维持了一个**ThreadLocalMap**(是个哈希桶[数组])，key是TLHolder.tc实例（即代码中声明的ThreadLocal对象），通过它的哈希码&桶容量求得的索引（TLHolder.tc相当于一个门面，绑定到线程内部的ThreadLocalMap），value是线程独享的变量（存储在**ThreadLocalMap.Entry<T>**类型的value字段）。向ThreadLocal中存取数据时接口方法会**隐式获取当前线程实例**，再获取当前线程实例的ThreadLocalMap，再结合门面的hashcode&桶容量求的索引值进而获取当前线程中与门面绑定的要操作的**独享变量**对应引用，最终进行读写。
 
 ```java
 //Thread.java
@@ -226,23 +229,32 @@ private void exit() {
 
 ## ThreadLocal在框架源码中的应用
 
-+ JDK
-  + SimpleDateFormat
-  + Random
-+ spring-tx
+### JDK
 
-+ Netty
-  + FastThreadLocal (还改进了)
+#### ThreadLocalRandom并发高性能随机数生成器
 
-+ 日志
-  + 链路追踪
+#### NIO
+
+
+
+### Spring-TX
+
+### Netty
+
++ FastThreadLocal (还改进了)
+
+### 日志
+
++ 链路追踪
 
 
 
 ## 工作中的使用
 
-+ Web会话共享
++ 线程级别实现Web会话共享
 
 + 请求拓展传参
 
   请求里面临时需要传递额外特殊的参数，但是不想改既有的参数类。
+
++ 使用ThreadLocal解决SimpleDateFormat线程安全问题
