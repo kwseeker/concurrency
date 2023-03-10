@@ -1,59 +1,95 @@
 # 并发编程-AQS
 
-AQS是一个抽象同步框架，可以用来实现一个依赖线程状态的同步器。JUC中众多的同步器都是通过AQS实现的。
+目标：
 
-## AQS架构
++ 
+
+> Provides a framework for implementing blocking locks and related synchronizers (semaphores, events, etc) 
+> that rely on first-in-first-out (FIFO) wait queues.
+
+AQS （AbstractQueuedSynchronizer，意为抽象的队列同步器），提供了一个依赖FIFO等待队列的框架用于实现阻塞锁和相关的同步器（信号量、事件等）。
+
+
+
+## AQS体系
 
 类图：
 
-![](imgs/AQS类架构.jpg)
+![](imgs/aqs-arch-uml.png)
 
-### 锁数据结构
-
-每一个AQS的实现类的实例都是锁对象。
-
-**AbstractQueuedSynchronizer**，定义锁基本数据和操作。
+**JDK中AQS的子类**：
 
 ```java
-//提供CAS操作支持
-unsafe: Unsafe
-stateOffset: long
-//锁状态，0：锁未被占用，1：锁被占用，>1:锁被重入占用
-state: volatile int
-//独占线程（对于独占锁的实现会使用到这个成员变量，如ReentrantLock）
-exclusiveOwnerThread -> AbstractOwnableSynchronizer  
-//等待获取锁的线程节点的等待队列
-head: Node
-headOffset
-tail: Node
-tailOffset
-nextOffset
-spinForTimeoutThreshold
+FairSync in ReentrantLock
+FairSync in ReentrantReadWriteLock
+FairSync in Semaphore
+NonfairSync in ReentrantLock
+NonfairSync in ReentrantReadWriteLock
+NonfairSync in Semaphore
+Sync in CountDownLatch
+Sync in ReentrantLock
+Sync in ReentrantReadWriteLock
+Sync in Semaphore
+Worker in ThreadPoolExecutor
+//公共类
+ReentrantLock、ReentrantReadWriteLock、 Semaphore、CountDownLatch、ThreadPoolExecutor
 ```
-**Node**: 阻塞队列的节点，存储等待获取锁的线程。
+
+
+
+### AQS数据结构
+
+要点总结：
+
+
 
 ```java
-waitStatus: volatile int	//等待状态：线程被cancelled、等待unpark()唤醒、等待条件唤醒
-nextWaiter: Node			//用于Condition条件锁，如Reentrant#Condition
-prev: volatile Node			//阻塞队列中当前节点的前一个等待获取锁的线程的节点
-next: volatile Node			//阻塞队列中当前节点的后一个等待获取锁的线程的节点
-thread: volatile Thread		//等待获取锁的线程
-```
-**state**：等待状态
+public abstract class AbstractQueuedSynchronizer
+    extends AbstractOwnableSynchronizer
+    implements java.io.Serializable {
+    
+    //自旋超时时间
+    static final long spinForTimeoutThreshold = 1000L;
+    //等待队列的头节点（等待队列中存放等待获取锁并被唤醒的线程）
+    private transient volatile Node head;
+    //等待队列的尾节点
+    private transient volatile Node tail;
+    //锁状态，0：锁未被占用，1：锁被占用，>1:锁被重入占用
+    private volatile int state;
+    
+    //从AbstractOwnableSynchronizer继承的属性
+    //独占线程（对于排他锁的实现会使用到这个成员变量，如ReentrantLock）
+    private transient Thread exclusiveOwnerThread;
 
-```java
-/** waitStatus value to indicate thread has cancelled */
-static final int CANCELLED =  1;
-/** waitStatus value to indicate successor's thread needs unparking */
-static final int SIGNAL    = -1;
-//后面两种状态用于共享锁的控制
-/** waitStatus value to indicate thread is waiting on condition */
-static final int CONDITION = -2;
-/**
-* waitStatus value to indicate the next acquireShared should
-* unconditionally propagate */
-static final int PROPAGATE = -3;
+    //CAS操作入口 及 各个属性的偏移量
+    private static final Unsafe unsafe = Unsafe.getUnsafe();
+    private static final long stateOffset;
+    private static final long headOffset;
+    private static final long tailOffset;
+    private static final long waitStatusOffset;	//Node.waitStatus的偏移量
+    private static final long nextOffset;
+
+    //阻塞队列的节点，存储等待获取锁的线程
+    static final class Node {
+      	//线程状态
+        // static final int CANCELLED =  1;		//线程取消等待
+        // static final int SIGNAL    = -1;			  //等待被唤醒
+        // static final int CONDITION = -2; 	//后面两种状态用于共享锁的控制
+        // static final int PROPAGATE = -3;
+        volatile int waitStatus;
+        //队列中当前Noded的前一个等待线程
+        volatile Node prev;
+        //队列中当前Noded的前一个等待线程
+        volatile Node next;
+        //节点当前的线程
+        volatile Thread thread;
+        //用于Condition条件锁，如Reentrant$Condition
+        Node nextWaiter;
+    }
+}
 ```
+
+
 
 ### AQS锁特性
 
