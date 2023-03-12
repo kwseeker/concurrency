@@ -1,9 +1,5 @@
 # 并发编程-AQS
 
-目标：
-
-+ 
-
 > Provides a framework for implementing blocking locks and related synchronizers (semaphores, events, etc) 
 > that rely on first-in-first-out (FIFO) wait queues.
 
@@ -41,8 +37,6 @@ ReentrantLock、ReentrantReadWriteLock、 Semaphore、CountDownLatch、ThreadPoo
 
 要点总结：
 
-
-
 ```java
 public abstract class AbstractQueuedSynchronizer
     extends AbstractOwnableSynchronizer
@@ -54,7 +48,7 @@ public abstract class AbstractQueuedSynchronizer
     private transient volatile Node head;
     //等待队列的尾节点
     private transient volatile Node tail;
-    //锁状态，0：锁未被占用，1：锁被占用，>1:锁被重入占用
+    //锁状态，0：锁未被占用，1：锁被占用，>1:锁被重入占用（重入次数）
     private volatile int state;
     
     //从AbstractOwnableSynchronizer继承的属性
@@ -69,7 +63,7 @@ public abstract class AbstractQueuedSynchronizer
     private static final long waitStatusOffset;	//Node.waitStatus的偏移量
     private static final long nextOffset;
 
-    //阻塞队列的节点，存储等待获取锁的线程
+    //双向队列（FIFO）的节点，存储等待获取锁的线程
     static final class Node {
       	//线程状态
         // static final int CANCELLED =  1;		//线程取消等待
@@ -91,23 +85,60 @@ public abstract class AbstractQueuedSynchronizer
 
 
 
-### AQS锁特性
+### AQS锁特点
 
-+ **阻塞等待队列**
++ **锁的实质**
 
-  AQS使用阻塞等待队列存储等待获取锁的线程。
+  是一个volatile int 类型的共享变量state。volatile保证可见性和禁止指令重排序。
 
-  + 同步等待队列
-  + 条件等待队列
+  ```java
+  //锁状态，0：锁未被占用，1：锁被占用，>1:锁被重入占用（重入次数）
+  private volatile int state;
+  ```
+
++ **等待线程队列**
+
+  AQS使用双向队列（FIFO）存储等待获取锁的线程。
+
+  为何设计为双端队列：因为
+
+  ```java
+  private void unparkSuccessor(Node node) {
+  	int ws = node.waitStatus;
+      if (ws < 0)
+          compareAndSetWaitStatus(node, ws, 0); //修改当前节点waitStatus为默认状态
+      Node s = node.next;
+      if (s == null || s.waitStatus > 0) {
+          s = null;
+          //查下一个可被唤醒的节点（从队列尾部开始往前查，因为next可能被置为空，但是prev一直存在）
+          for (Node t = tail; t != null && t != node; t = t.prev)
+              if (t.waitStatus <= 0)
+                  s = t;
+      }
+      if (s != null)
+          LockSupport.unpark(s.thread); //总是唤醒链表中下一个可唤醒的节点
+  }
+  ```
 
 + **共享/独占**
+
+  
 
   共享锁如：CountDownLatch、Semaphore
   独占锁如：ReentrantLock
 
 + **公平/非公平**
 
-  公平锁实现需要先判断队列是否为空，不为空直接创建节点加入到队尾；非公平锁实现先尝试获取锁，失败的话再加入队尾。
+  以ReentrantLock为例。
+
+  state == 0 的情况下：
+  都一样，即通过CAS state竞争获取锁。
+
+  state>=1 的情况下：
+
+  公平：新来的线程（可能多个）直接加入到队列；
+
+  非公平：新来的线程和队列头部的线程进行竞争。
 
 + **可重入**
 
@@ -115,7 +146,35 @@ public abstract class AbstractQueuedSynchronizer
 
 + **允许中断**
 
+  等待锁的线程和释放锁的线程的关系可以用下面代码简单表示，其中等待线程可以被中断（再后面的判断中被从队列中清除）退出等待。
 
+  ```java
+  @Test
+  public void testLockSupport() throws InterruptedException {
+      //等待锁的线程
+      Thread t = new Thread(() -> {
+          LockSupport.park(this);
+          System.out.println("waiting ...");
+          boolean interrupted = Thread.interrupted();
+          System.out.println("interrupted: " + interrupted);
+  
+      });
+      t.start();
+  
+      //释放锁的线程
+      Thread.sleep(10);
+      System.out.println("state: " + t.getState());
+      //等待线程退出的方式1：等待线程被唤醒
+      //LockSupport.unpark(t);
+      //等待线程退出的方式2：等待线程被中断
+      t.interrupt();
+  
+      t.join();
+      System.out.println("done");
+  }
+  ```
+
+  
 
 ## AQS实现类源码分析
 
@@ -123,54 +182,67 @@ public abstract class AbstractQueuedSynchronizer
 
 #### ReentrantLock
 
-类似排队买东西的生活场景。
+测试DEMO: ReentrantLockTest.java
 
-##### 以ReentrantLock的测试开始调试分析
+源码分析参考流程图（之前写的文字总结感觉太乱了重新画了个流程图）。
 
-```
-public class ReentrantLockTest {
-    private int count = 0;
-    @Test
-    public void testReentrantLock() {
-        ReentrantLock lock = new ReentrantLock(); //1
-        for (int i = 0; i < 3; i++) {
-            new Thread(()->{
-                lock.lock();  //2
-                count++;
-                lock.unlock();  //3
-            }).start();
+![](imgs/ReentrantLock-workflow.png)
+
+##### ReentrantLock 公平锁和非公平锁
+
+**state == 0** 的情况下：
+
+都一样，即通过CAS state竞争获取锁。
+
+**state >= 1** 的情况下：
+
+**公平锁**：新来的线程（可能多个）直接加入到队列；
+
+**非公平锁**：新来的线程和队列头部的线程进行竞争。
+
+```java
+//非公平锁尝试获取锁
+final boolean nonfairTryAcquire(int acquires) {
+    final Thread current = Thread.currentThread();
+    int c = getState();
+    if (c == 0) {
+        if (compareAndSetState(0, acquires)) {	//ReentrantLock 公平锁和非公平锁的区别
+            setExclusiveOwnerThread(current);
+            return true;
         }
-        while (Thread.activeCount() > 2) {}
-        System.out.println(count);
     }
+    else if (current == getExclusiveOwnerThread()) {
+        int nextc = c + acquires;
+        if (nextc < 0) // overflow
+            throw new Error("Maximum lock count exceeded");
+        setState(nextc);
+        return true;
+    }
+    return false;
+}
+
+//公平锁尝试获取锁
+protected final boolean tryAcquire(int acquires) {
+    final Thread current = Thread.currentThread();
+    int c = getState();
+    if (c == 0) {
+        if (!hasQueuedPredecessors() &&
+            compareAndSetState(0, acquires)) {	//!hasQueuedPredecessors()  公平锁多了这个判断
+            									//即c线程入队后就不会再跟新线程抢锁了，只会排队等待唤醒
+            setExclusiveOwnerThread(current);
+            return true;
+        }
+    }
+    else if (current == getExclusiveOwnerThread()) {
+        int nextc = c + acquires;
+        if (nextc < 0)
+            throw new Error("Maximum lock count exceeded");
+        setState(nextc);
+        return true;
+    }
+    return false;
 }
 ```
-
-##### 多个线程并发加锁释放锁流程
-
-  1) 线程A通过Unsafe CAS 比较当前锁对象成员变量state的值是否为0(未被占用)，是的话更新为1(被占用)。更新成功的话，设置独占线程exclusiveOwnerThread为当前线程。然后执行同步块，断点暂停。
-
-  2) 假如又一个线程B加锁执行CAS比较当前锁对象成员变量state的值是否为0，这次肯定失败返回false；执行AbstractQueuedSynchronizer$acquire(int arg)[这个方法在ReentrantLock#NonfairSync中实现]，这个方法内部先读取锁的state值，看看是否为0（即锁有没有释放），释放了则执行第一步的逻辑，没有释放的话，读取当前锁被哪个线程独占，看是不是自己；是自己的话说明是重入加锁，将state值+1；否则返回获取锁失败。
-
-  3) 线程B tryAcquire 失败后，创建新的等待节点[记录当前线程实例到thread成员变量和占锁模式到nextWaiter成员变量，ReentrantLock为独占模式：Node.EXCLUSIVE]加入锁的等待队列。
-
-  4) 线程B会在一个循环中等待被唤醒，占用锁的线程释放锁会唤醒队列中下一个等待状态中的线程。
-      ```java
-for (;;) {
-    final Node p = node.predecessor();
-    if (p == head && tryAcquire(arg)) {
-        setHead(node);
-        p.next = null; // help GC
-        failed = false;
-        return interrupted;
-    }
-    if (shouldParkAfterFailedAcquire(p, node) &&
-        parkAndCheckInterrupt())  //这里面调用 LockSupport.park()进入等待
-        interrupted = true;
-}
-      ```
-
-  5) 线程A执行完同步块代码然后释放锁lock.unlock(), 执行AbstractQueuedSynchronizer$release()；先执行 Sync$tryRelease(),先检查占锁的线程是否为当前线程，然后因为锁是可重入的需要判断state减1是否为0，不为0说明还不能释放锁，这时只会将state值减一。如果tryRelease()执行成功说明真是需要释放锁了，判断head.next节点的waitStatus值，根据值做对应处理。1：直接从队列删除head.next节点；-1：唤醒head.next节点的线程；-2：条件处理。
 
 ##### Condition原理
 
@@ -194,6 +266,8 @@ final boolean transferForSignal(Node node) {
 ```
 
 #### ReetrantReadWriteLock
+
+
 
 #### Semaphore
 
