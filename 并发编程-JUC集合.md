@@ -265,7 +265,136 @@ JDK1.8的实现(CAS和synchronized):
 
 因为HashMap的并发问题主要体现在对同一个Hash索引位置的读写（想想也确实是，两个线程分别读写不同Hash索引位置根本不互相影响），那么我们只需要把锁加在要操作的索引位置就行了，也就是链表表头或者红黑树的首节点；这么实现锁的粒度比分段锁细多了，性能非常好。
 
+#### JDK1.8ConcurrentHashMap实现原理：
 
+##### 数据结构
+
+```java
+private static final int MAXIMUM_CAPACITY = 1 << 30;
+private static final int DEFAULT_CAPACITY = 16;
+static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
+//兼容JDK旧版本的实现
+private static final int DEFAULT_CONCURRENCY_LEVEL = 16;
+private static final float LOAD_FACTOR = 0.75f;
+//hash冲突节点链表转红黑树的size阈值
+static final int TREEIFY_THRESHOLD = 8;
+//红黑树转链表的size阈值
+static final int UNTREEIFY_THRESHOLD = 6;
+
+/**
+     * The smallest table capacity for which bins may be treeified.
+     * (Otherwise the table is resized if too many nodes in a bin.)
+     * The value should be at least 4 * TREEIFY_THRESHOLD to avoid
+     * conflicts between resizing and treeification thresholds.
+     */
+static final int MIN_TREEIFY_CAPACITY = 64;
+
+/**
+     * Minimum number of rebinnings per transfer step. Ranges are
+     * subdivided to allow multiple resizer threads.  This value
+     * serves as a lower bound to avoid resizers encountering
+     * excessive memory contention.  The value should be at least
+     * DEFAULT_CAPACITY.
+     */
+private static final int MIN_TRANSFER_STRIDE = 16;
+
+/**
+     * The number of bits used for generation stamp in sizeCtl.
+     * Must be at least 6 for 32bit arrays.
+     */
+private static int RESIZE_STAMP_BITS = 16;
+
+/**
+     * The maximum number of threads that can help resize.
+     * Must fit in 32 - RESIZE_STAMP_BITS bits.
+     */
+private static final int MAX_RESIZERS = (1 << (32 - RESIZE_STAMP_BITS)) - 1;
+
+/**
+     * The bit shift for recording size stamp in sizeCtl.
+     */
+private static final int RESIZE_STAMP_SHIFT = 32 - RESIZE_STAMP_BITS;
+
+/*
+     * Encodings for Node hash fields. See above for explanation.
+     */
+static final int MOVED     = -1; // hash for forwarding nodes
+static final int TREEBIN   = -2; // hash for roots of trees
+static final int RESERVED  = -3; // hash for transient reservations
+static final int HASH_BITS = 0x7fffffff; // usable bits of normal node hash
+
+/** Number of CPUS, to place bounds on some sizings */
+static final int NCPU = Runtime.getRuntime().availableProcessors();
+
+transient volatile Node<K,V>[] table;
+
+/**
+     * The next table to use; non-null only while resizing.
+     */
+private transient volatile Node<K,V>[] nextTable;
+
+/**
+     * Base counter value, used mainly when there is no contention,
+     * but also as a fallback during table initialization
+     * races. Updated via CAS.
+     */
+private transient volatile long baseCount;
+
+/**
+     * Table initialization and resizing control.  When negative, the
+     * table is being initialized or resized: -1 for initialization,
+     * else -(1 + the number of active resizing threads).  Otherwise,
+     * when table is null, holds the initial table size to use upon
+     * creation, or 0 for default. After initialization, holds the
+     * next element count value upon which to resize the table.
+     */
+private transient volatile int sizeCtl;
+
+/**
+     * The next table index (plus one) to split while resizing.
+     */
+private transient volatile int transferIndex;
+
+/**
+     * Spinlock (locked via CAS) used when resizing and/or creating CounterCells.
+     */
+private transient volatile int cellsBusy;
+
+/**
+     * Table of counter cells. When non-null, size is a power of 2.
+     */
+private transient volatile CounterCell[] counterCells;
+
+// views
+private transient KeySetView<K,V> keySet;
+private transient ValuesView<K,V> values;
+private transient EntrySetView<K,V> entrySet;
+```
+
+##### 操作方法
+
+##### 扩容操作
+
+##### 红黑树操作
+
+##### 计数器实现
+
+##### JDk1.8优化方式总结
+
+**存储结构优化：**
+
+JDK1.7中是数组（哈希桶）+链表实现; JDK1.8中采用数组（哈希桶）+链表+红黑树。当哈希冲突数据较多时，比链表查询效率高很多。
+
+**写数据加锁方式优化：**
+JDK1.7中使用分段锁的方式，锁粒度还是比较粗；JDK1.8锁的粒度是数组元素（即链表或红红黑树头节点），粒度大大降低，性能更好。
+
+**扩容优化：**
+
+JDK1.8添加了辅助扩容，
+
+**元素个数计数器优化：**
+
+计数器采用了类似LongAddr的设计，将对一个数据的CAS操作拆分为了对多个数据的CAS操作，减小了并发修改的可能性，从而大大提高了性能。
 
 ## 读写锁集合
 
