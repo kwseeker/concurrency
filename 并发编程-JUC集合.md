@@ -315,10 +315,14 @@ private static final int MAX_RESIZERS = (1 << (32 - RESIZE_STAMP_BITS)) - 1;
      */
 private static final int RESIZE_STAMP_SHIFT = 32 - RESIZE_STAMP_BITS;
 //节点内部hash字段的值，-1表示当前哈希表位置的数据正在扩容
+//用于ForwardingNode（扩容时使用表示旧哈希表中已经迁移完毕的节点），并不存储实际元素，而是指向nextTable，
 static final int MOVED     = -1; // hash for forwarding nodes
 //节点内部hash字段的值，-2表示当前哈希表位置下挂载的是一个红黑树
+//用于TreeBin（链表树化时使用），并不存储真实的元素，用来指向红黑树的根节点
+//同时TreeBin
 static final int TREEBIN   = -2; // hash for roots of trees
-//当前hash位置被预留
+//预留的hash值
+//当前看有用于ReservationNode，在putIfAbsent时使用。因为put时需要对桶上的元素上对象锁，这时就会添加一个临时占位用的节点ReservationNode。
 static final int RESERVED  = -3; // hash for transient reservations
 //保留hash的bit位（后31位）
 static final int HASH_BITS = 0x7fffffff; // usable bits of normal node hash
@@ -347,6 +351,12 @@ private transient KeySetView<K,V> keySet;
 private transient ValuesView<K,V> values;
 private transient EntrySetView<K,V> entrySet;
 ```
+
+找到一张图还是比较形象的：
+
+其中 TreeBin root 指向红黑树的根节点，first 指向链表的头节点　(TreeNode 既表示红黑树(parent、left、right)也表示双向联表(prev, next))
+
+![](imgs/CHM-data-structure.png)
 
 ##### 插入操作
 
@@ -712,6 +722,35 @@ private final void transfer(Node<K,V>[] tab, Node<K,V>[] nextTab) {
             }
         }
     }
+}
+```
+
+##### 读取操作
+
+```java
+public V get(Object key) {
+    Node<K,V>[] tab; Node<K,V> e, p; int n, eh; K ek;
+    //先计算hash值，然后计算索引
+    int h = spread(key.hashCode());
+    if ((tab = table) != null && (n = tab.length) > 0 &&
+        (e = tabAt(tab, (n - 1) & h)) != null) {		//读取索引位置元素
+        if ((eh = e.hash) == h) {	
+            if ((ek = e.key) == key || (ek != null && key.equals(ek)))	//索引位置元素key和查询的key相等，直接返回结果
+                return e.val;
+        }
+        else if (eh < 0)		//e.hash为负数有两种情况: -1：正在迁移、-2:此节点处是红黑树
+            //find有３种实现
+            //ForwardingNode: 正在扩容，查询nextTab(遍历查询)
+            //TreeBin: 如果正在
+            //TreeNode: 查询红黑树
+            return (p = e.find(h, key)) != null ? p.val : null;
+        while ((e = e.next) != null) {	//走到这里说明当前要查的节点在链表内（非头部），遍历链表查询
+            if (e.hash == h &&
+                ((ek = e.key) == key || (ek != null && key.equals(ek))))
+                return e.val;
+        }
+    }
+    return null;
 }
 ```
 
