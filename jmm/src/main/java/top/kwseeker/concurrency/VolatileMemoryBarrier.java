@@ -1,4 +1,4 @@
-package top.kwseeker.concurrency.jmm;
+package top.kwseeker.concurrency;
 
 /**
  * volatile内存语义的实现

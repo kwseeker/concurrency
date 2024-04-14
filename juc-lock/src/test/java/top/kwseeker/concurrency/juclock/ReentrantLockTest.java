@@ -14,16 +14,18 @@ public class ReentrantLockTest {
 
     @Test
     public void testReentrantLock() {
-        //ReentrantLock lock = new ReentrantLock();   //默认非公平
-        ReentrantLock lock = new ReentrantLock(true);
+        ReentrantLock lock = new ReentrantLock();   //默认非公平
+        //ReentrantLock lock = new ReentrantLock(true);
         for (int i = 0; i < 3; i++) {
             new Thread(() -> {
                 lock.lock();
                 count++;
                 lock.unlock();
-            }).start();
+            }, "thread-" + i).start();
         }
+
         while (Thread.activeCount() > 2) {
+            Thread.yield();
         }
         System.out.println(count);
     }

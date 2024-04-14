@@ -1,4 +1,4 @@
-package top.kwseeker.concurrency.cache;
+package top.kwseeker.concurrency.jmm;
 
 import org.junit.Test;
 

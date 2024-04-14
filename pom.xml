@@ -9,22 +9,19 @@
     <packaging>pom</packaging>
     <modules>
         <module>jmm</module>
-        <module>thread</module>
-        <module>thread-safety</module>
-        <module>juc-lock</module>
         <module>juc-atomic</module>
         <module>juc-collection</module>
         <module>juc-executor</module>
-        <module>promise-future</module>
-        <module>lock</module>
-        <module>01-base</module>
         <module>juc-fork-join</module>
-        <module>unsafe</module>
+        <module>juc-lock</module>
+        <module>promise-future</module>
+        <module>thread</module>
+        <module>thread-safety</module>
         <module>threadlocal</module>
+        <module>unsafe</module>
     </modules>
 
     <name>concurrency</name>
-    <description>Demo project for web concurrency</description>
 
     <parent>
         <groupId>org.springframework.boot</groupId>

@@ -1,13 +1,16 @@
-package top.kwseeker.concurrency.thread.state;
+package top.kwseeker.concurrency.thread;
 
 import org.junit.Test;
 
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * 线程 sleep() 特点测试
- * 1) 会释放CPU资源，但是会保持拥有监视器锁
- *
+ * 线程 sleep() 和 Object wait() 特点测试
+ * 1. 对于 sleep()方法，我们首先要知道该方法是属于 Thread 类中的。而 wait() 方法，则是属于 Object 类中的。
+ * 2. sleep()方法导致了程序暂停执行指定的时间，让出 cpu 给其他线程，但是他的监控状态依然保持着，当指定的时间到了又会自动恢复运行状态。
+ * 3. wait() notify() 依赖 synchronized 监视器锁才能正常工作。
+ * 4. 在调用 sleep()方法的过程中，线程不会释放监视器锁。
+ * 5. 当调用 wait()方法的时候，线程会放弃监视器锁，进入等待此对象的等待锁定池，只有针对此对象调用 notify()方法后本线程才进入对象锁定池准备获取对象锁进入运行状态。
  */
 public class ThreadSleepTest {
 
@@ -66,8 +69,12 @@ public class ThreadSleepTest {
         }
     }
 
+    /**
+     * sleep() 也会保持 ReentrantLock这种锁，从实现原理上看是显而易见的(当时为何会做这种测试？)
+     * wait() 肯定也会保持 ReentrantLock这种锁
+     */
     @Test
-    public void testSleepOnlyHoldMonitorLock() throws InterruptedException {
+    public void testSleepAlsoHoldAQSLock() throws InterruptedException {
         //Object lock = new Object();
         ReentrantLock lock = new ReentrantLock();
         Thread thread1 = new Thread(() -> {

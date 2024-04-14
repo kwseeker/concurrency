@@ -1,4 +1,4 @@
-package top.kwseeker.concurrency.liveness;
+package top.kwseeker.concurrency.juclock;
 
 import org.junit.Test;
 
