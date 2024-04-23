@@ -190,7 +190,7 @@ public abstract class AbstractQueuedSynchronizer
 
 ##### ReentrantLock 公平锁和非公平锁
 
-**state == 0** 的情况下：
+**都是state == 0** 的情况下：
 
 都一样，即通过CAS state竞争获取锁。
 

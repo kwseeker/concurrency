@@ -19,6 +19,7 @@
         <module>thread-safety</module>
         <module>threadlocal</module>
         <module>unsafe</module>
+        <module>keyword-synchronized</module>
     </modules>
 
     <name>concurrency</name>
