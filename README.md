@@ -69,7 +69,7 @@ kwseeker/netty Executors线程池.md
         private static final int CANCELLED    = 4;
         private static final int INTERRUPTING = 5;
         private static final int INTERRUPTED  = 6;
-        ``` 
+        ```
         
         TODO：线程池的线程是怎么将执行结果写入到outcome中的？大概浏览了下源码却没找到！日后仔细研究。
 
@@ -222,7 +222,7 @@ TODO：JVM Monitor的实现
 #### 4.1 Future 及其实现类
 
 + 超时监听
-    
+  
     - 多线程超时监听与退出 
     
         TODO: [java 监听多线程超时：Future](https://blog.csdn.net/yiyiwyf/article/details/80065413)
@@ -233,7 +233,7 @@ TODO：JVM Monitor的实现
 #### Java异步与回调
 
 + Java异步实现
-    
+  
     这里说的异步指任务异步执行+异步处理执行结果；
     多线程本身是异步的，但是Java8之前异步有个问题：对于有返回值的任务只能同步等待它返回结果。
     Java8之前会不断轮询任务线程是否执行完。
@@ -242,7 +242,7 @@ TODO：JVM Monitor的实现
     真正的异步都是借助回调实现的。异步任务提交的同时传一个回调函数，当任务完成异步任务线程执行回调。
     
     - Future（伪异步：需要同步获取结果）   
-   
+     
         Future 的限制：  
         无法手动完成；  
         阻塞式结果返回；
@@ -253,7 +253,7 @@ TODO：JVM Monitor的实现
     - CountdownLatch（伪异步）
     
     - CompletableFuture（Java8新增接口，实现真正的异步）
-        
+      
         针对Future的限制，Java8引入了CompletableFuture。
         ```
         CompletableFuture asyncCompletableFuture3 = CompletableFuture.supplyAsync(() -> {
@@ -278,7 +278,7 @@ TODO：JVM Monitor的实现
         * Netty Promise
 
     - Spring中异步方法
-        
+      
         @Async
 
 + Java回调实现
@@ -286,7 +286,7 @@ TODO：JVM Monitor的实现
 + 对Java异步请求执行同步监听
 
     - Future get()方法阻塞等待异步任务执行结果
-        
+      
         ```
         /**
          * Awaits completion or aborts on interrupt or timeout.
@@ -305,7 +305,7 @@ TODO：JVM Monitor的实现
                     removeWaiter(q);
                     throw new InterruptedException();
                 }
-    
+      
                 int s = state;
                 if (s > COMPLETING) {
                     if (q != null)
